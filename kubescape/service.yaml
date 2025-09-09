@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubescape-service
+  namespace: kubescape
+  labels:
+    app: kubescape
+spec:
+  selector:
+    app: kubescape
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+

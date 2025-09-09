@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubescape
+  namespace: kubescape
+  labels:
+    app: kubescape
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubescape
+  template:
+    metadata:
+      labels:
+        app: kubescape
+    spec:
+      serviceAccountName: kubescape
+      containers:
+      - name: kubescape
+        image: quay.io/armosec/kubescape:latest
+        imagePullPolicy: Always
+        command: ["/bin/sh"]
+        args: ["-c", "while true; do sleep 30; done"]
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/kubescape
+        env:
+        - name: KS_LOGGER_LEVEL
+          value: "info"
+        - name: KS_LOGGER_NAME
+          value: "kubescape"
+      volumes:
+      - name: config-volume
+        configMap:
+          name: kubescape-config
+      restartPolicy: Always
+
