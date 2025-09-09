@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubescape-config
+  namespace: kubescape
+data:
+  config.yaml: |
+    account: ""
+    clientID: ""
+    secretKey: ""
+    server: ""
+

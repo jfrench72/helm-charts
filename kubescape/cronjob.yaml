@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kubescape-scan
+  namespace: kubescape
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: kubescape
+          containers:
+          - name: kubescape-scanner
+            image: quay.io/armosec/kubescape:latest
+            imagePullPolicy: Always
+            command:
+            - kubescape
+            - scan
+            - --format
+            - json
+            - --output
+            - /tmp/kubescape-results.json
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "1Gi"
+                cpu: "500m"
+            volumeMounts:
+            - name: results-volume
+              mountPath: /tmp
+          volumes:
+          - name: results-volume
+            emptyDir: {}
+          restartPolicy: OnFailure
+
