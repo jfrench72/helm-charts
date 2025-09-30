@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security-scanners
+  labels:
+    app.kubernetes.io/part-of: security-scanners
+    logging: "true"

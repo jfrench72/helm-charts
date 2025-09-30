@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trivy-cluster-scan
+  namespace: security-scanners
+  labels:
+    app: security-scanner
+    scanner: trivy
+spec:
+  schedule: "0 3 * * *" # daily at 03:00
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: security-scanner
+            scanner: trivy
+        spec:
+          serviceAccountName: scanner-sa
+          restartPolicy: Never
+          containers:
+          - name: trivy
+            image: aquasec/trivy:0.53.0
+            imagePullPolicy: IfNotPresent
+            args:
+            - k8s
+            - --scanners
+            - vuln,config,secret,rbac
+            - --format
+            - json
+            - cluster
+            - --timeout
+            - 10m
+            env:
+            - name: TRIVY_DISABLE_PROGRESS
+              value: "true"
+            - name: TRIVY_CACHE_DIR
+              value: /tmp/trivy-cache
+            resources:
+              requests:
+                cpu: "200m"
+                memory: "256Mi"
+              limits:
+                cpu: "1"
+                memory: "1Gi"
+            volumeMounts:
+            - name: trivy-cache
+              mountPath: /tmp/trivy-cache
+          volumes:
+          - name: trivy-cache
+            emptyDir: {}

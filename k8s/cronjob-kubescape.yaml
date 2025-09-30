@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kubescape-cluster-scan
+  namespace: security-scanners
+  labels:
+    app: security-scanner
+    scanner: kubescape
+spec:
+  schedule: "30 3 * * *" # daily at 03:30
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: security-scanner
+            scanner: kubescape
+        spec:
+          serviceAccountName: scanner-sa
+          restartPolicy: Never
+          containers:
+          - name: kubescape
+            image: quay.io/kubescape/kubescape:latest
+            imagePullPolicy: IfNotPresent
+            args:
+            - scan
+            - framework
+            - nsa,mitre
+            - --format
+            - json
+            resources:
+              requests:
+                cpu: "200m"
+                memory: "256Mi"
+              limits:
+                cpu: "1"
+                memory: "1Gi"
