@@ -1,0 +1,47 @@
+stages:
+  - deploy
+  - trigger
+
+variables:
+  KUBE_NAMESPACE: security-scanners
+
+.kube-setup: &kube_setup
+  image: bitnami/kubectl:1.30
+  before_script:
+    - kubectl version --client
+    # The following variables must be configured in GitLab CI/CD settings:
+    # KUBE_CA_PEM, KUBE_SERVER, KUBE_TOKEN
+    - echo "$KUBE_CA_PEM" | base64 -d > ca.crt
+    - kubectl config set-cluster cluster --server="$KUBE_SERVER" --certificate-authority=ca.crt --embed-certs=true
+    - kubectl config set-credentials gitlab --token="$KUBE_TOKEN"
+    - kubectl config set-context ctx --cluster=cluster --user=gitlab --namespace=$KUBE_NAMESPACE
+    - kubectl config use-context ctx
+
+deploy-scanners:
+  stage: deploy
+  <<: *kube_setup
+  script:
+    - kubectl apply -f k8s/namespace.yaml
+    - kubectl apply -f k8s/rbac.yaml
+    - kubectl apply -f k8s/cronjob-trivy.yaml
+    - kubectl apply -f k8s/cronjob-kubescape.yaml
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+
+trigger-trivy:
+  stage: trigger
+  <<: *kube_setup
+  script:
+    - kubectl create job --from=cronjob/trivy-cluster-scan "trivy-manual-$(date +%s)"
+  when: manual
+  allow_failure: true
+  needs: ["deploy-scanners"]
+
+trigger-kubescape:
+  stage: trigger
+  <<: *kube_setup
+  script:
+    - kubectl create job --from=cronjob/kubescape-cluster-scan "kubescape-manual-$(date +%s)"
+  when: manual
+  allow_failure: true
+  needs: ["deploy-scanners"]

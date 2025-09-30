@@ -1,3 +1,58 @@
+## Security Scanners: Trivy and Kubescape as Kubernetes CronJobs with Grafana Visibility
+
+This repo includes Kubernetes manifests to run Trivy and Kubescape cluster scans as CronJobs and a GitLab CI pipeline to deploy them and optionally trigger ad-hoc scans. Logs are annotated for collection by Loki, enabling visualization in Grafana.
+
+### Prerequisites
+- Kubernetes cluster with permissions to create cluster-wide RBAC
+- GitLab CI/CD with variables configured:
+  - `KUBE_SERVER`: Kubernetes API server URL
+  - `KUBE_TOKEN`: Service account token with cluster-admin or adequate rights to create RBAC and CronJobs
+  - `KUBE_CA_PEM`: Base64-encoded PEM of cluster CA certificate
+- Logging stack (Loki + Promtail/Agent) configured to scrape Kubernetes logs and forward to Loki
+- Grafana connected to Loki as a data source
+
+### Deploy
+GitLab will apply manifests on push:
+
+1. Ensure variables above are set in GitLab project settings.
+2. Push to the repository. The `deploy-scanners` job applies:
+   - `k8s/namespace.yaml`
+   - `k8s/rbac.yaml`
+   - `k8s/cronjob-trivy.yaml`
+   - `k8s/cronjob-kubescape.yaml`
+
+### Trigger ad-hoc scans
+- Use manual pipeline jobs:
+  - `trigger-trivy` creates an immediate Job from the Trivy CronJob
+  - `trigger-kubescape` creates an immediate Job from the Kubescape CronJob
+
+### Observability in Grafana (via Loki)
+The CronJobs and Pods are labeled with `app=security-scanner` and `scanner={trivy|kubescape}` and inherit namespace `security-scanners`. Most Kubernetes log scrapers add these labels automatically as Loki labels.
+
+Example LogQL queries:
+
+```
+{namespace="security-scanners", app="security-scanner", scanner="trivy"}
+```
+
+```
+{namespace="security-scanners", app="security-scanner", scanner="kubescape"}
+```
+
+If your Promtail setup does not pass through pod labels, consider adjusting your scrape config to include `pod_labels` or `labeldrop/labelkeep` rules.
+
+### Exporting structured results (optional)
+Trivy and Kubescape are configured to print JSON to stdout. If you prefer to persist results:
+- Add an `emptyDir` or `PVC` and write JSON files, then sidecar ship to object storage
+- Or send to an HTTP endpoint (e.g., pushgateway or webhook) using an init/wrapper script
+
+### Schedules
+- Trivy: daily at 03:00
+- Kubescape: daily at 03:30
+Modify `spec.schedule` in the CronJobs as needed.
+
+### Security
+The provided ClusterRole grants read-only access to cluster resources. Tighten further as needed.
 # Elastic Stack Kubernetes Helm Charts
 
 [![Build Status](https://img.shields.io/jenkins/s/https/devops-ci.elastic.co/job/elastic+helm-charts+main.svg)](https://devops-ci.elastic.co/job/elastic+helm-charts+main/) [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/elastic)](https://artifacthub.io/packages/search?repo=elastic)
